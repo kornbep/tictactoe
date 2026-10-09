@@ -193,3 +193,26 @@ h1 {
         font-size: 38px;
     }
 }
+
+
+#difficultySelection h2 {
+    color: #f8fafc;
+    font-size: 22px;
+    margin-bottom: 5px;
+}
+
+.easy-btn:hover {
+    border-color: #4ade80;
+}
+
+.difficult-btn:hover {
+    border-color: #facc15;
+}
+
+.hard-btn:hover {
+    border-color: #fb7185;
+}
+
+#backBtn {
+    margin-top: 5px;
+}

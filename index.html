@@ -17,12 +17,39 @@
         <div id="modeSelection" class="mode-selection">
             <button id="aiModeBtn" class="mode-btn">
                 🤖 Player vs AI
-                <span>Challenge the computer</span>
+                <span>Choose your difficulty</span>
             </button>
 
             <button id="twoPlayerModeBtn" class="mode-btn">
                 👥 2 Players
                 <span>Play with a friend</span>
+            </button>
+        </div>
+
+        <!-- AI difficulty selection -->
+        <div id="difficultySelection" class="mode-selection" hidden>
+            <h2>Choose Difficulty</h2>
+
+            <button class="mode-btn easy-btn"
+                    data-difficulty="easy">
+                🟢 Easy
+                <span>Random moves</span>
+            </button>
+
+            <button class="mode-btn difficult-btn"
+                    data-difficulty="difficult">
+                🟡 Difficult
+                <span>Tries to win and block you</span>
+            </button>
+
+            <button class="mode-btn hard-btn"
+                    data-difficulty="hard">
+                🔴 Hard
+                <span>Unbeatable AI</span>
+            </button>
+
+            <button id="backBtn" class="change-mode-btn">
+                ← Back to Game Modes
             </button>
         </div>
 
@@ -43,6 +70,7 @@
                 <button class="cell" data-index="8"></button>
             </div>
 
+            <!-- Scoreboard -->
             <div class="scoreboard">
                 <div class="score x-score">
                     <span>Player X</span>
@@ -66,5 +94,6 @@
     </div>
 
     <script src="script.js"></script>
+
 </body>
 </html>

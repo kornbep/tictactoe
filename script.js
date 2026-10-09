@@ -3,6 +3,7 @@ const cells = document.querySelectorAll(".cell");
 
 const statusText = document.getElementById("status");
 const modeSelection = document.getElementById("modeSelection");
+const difficultySelection = document.getElementById("difficultySelection");
 const gameArea = document.getElementById("gameArea");
 const modeLabel = document.getElementById("modeLabel");
 
@@ -10,6 +11,7 @@ const aiModeBtn = document.getElementById("aiModeBtn");
 const twoPlayerModeBtn = document.getElementById("twoPlayerModeBtn");
 const restartBtn = document.getElementById("restartBtn");
 const changeModeBtn = document.getElementById("changeModeBtn");
+const backBtn = document.getElementById("backBtn");
 
 const scoreXText = document.getElementById("scoreX");
 const scoreOText = document.getElementById("scoreO");
@@ -18,6 +20,7 @@ const playerOLabel = document.getElementById("playerOLabel");
 let currentPlayer = "X";
 let gameActive = true;
 let gameMode = "twoPlayer";
+let difficulty = "easy";
 
 let board = ["", "", "", "", "", "", "", "", ""];
 
@@ -35,24 +38,46 @@ const winningCombinations = [
     [2, 4, 6]
 ];
 
-// Choose Player vs AI
+// Show difficulty selection
 aiModeBtn.addEventListener("click", () => {
-    startGame("ai");
+    modeSelection.hidden = true;
+    difficultySelection.hidden = false;
 });
 
-// Choose two players
+// Return to game mode selection
+backBtn.addEventListener("click", () => {
+    difficultySelection.hidden = true;
+    modeSelection.hidden = false;
+});
+
+// Select AI difficulty
+document.querySelectorAll("[data-difficulty]").forEach((button) => {
+    button.addEventListener("click", () => {
+        startGame("ai", button.dataset.difficulty);
+    });
+});
+
+// Start two-player mode
 twoPlayerModeBtn.addEventListener("click", () => {
     startGame("twoPlayer");
 });
 
-function startGame(mode) {
+function startGame(mode, selectedDifficulty = "easy") {
     gameMode = mode;
+    difficulty = selectedDifficulty;
 
     modeSelection.hidden = true;
+    difficultySelection.hidden = true;
     gameArea.hidden = false;
 
     if (gameMode === "ai") {
-        modeLabel.textContent = "🤖 Player vs AI";
+        const names = {
+            easy: "Easy",
+            difficult: "Difficult",
+            hard: "Hard"
+        };
+
+        modeLabel.textContent = `🤖 Player vs AI — ${names[difficulty]}`;
         playerOLabel.textContent = "AI (O)";
     } else {
         modeLabel.textContent = "👥 Two Players";
@@ -62,13 +87,12 @@ function startGame(mode) {
     restartGame();
 }
 
-// Handle cell clicks
+// Handle player clicks
 cells.forEach((cell) => {
     cell.addEventListener("click", () => {
-        // Ignore clicks if the game is over
         if (!gameActive) return;
 
-        // The human plays X in AI mode
+        // Prevent clicking during the AI's turn
         if (gameMode === "ai" && currentPlayer === "O") {
             return;
         }
@@ -77,18 +101,16 @@ cells.forEach((cell) => {
 
         if (board[index] !== "") return;
 
-        makeMove(index, currentPlayer);
+        makeMove(index, "X");
 
         if (finishTurn()) return;
 
         if (gameMode === "ai") {
-            // Give the computer its turn
             currentPlayer = "O";
             statusText.textContent = "AI is thinking...";
 
             setTimeout(computerMove, 300);
         } else {
-            // Switch between two human players
             currentPlayer = currentPlayer === "X" ? "O" : "X";
             statusText.textContent = `Player ${currentPlayer}'s turn`;
         }
@@ -144,7 +166,7 @@ function finishTurn() {
     return false;
 }
 
-// Find a winning combination for either player
+// Detect winning combinations
 function checkWinner(currentBoard) {
     for (const combination of winningCombinations) {
         const [a, b, c] = combination;
@@ -161,54 +183,104 @@ function checkWinner(currentBoard) {
     return null;
 }
 
-// Computer's turn
-function computerMove() {
-    if (!gameActive || gameMode !== "ai") return;
-
-    const bestMove = findBestMove();
-
-    if (bestMove !== -1) {
-        makeMove(bestMove, "O");
-    }
-
-    if (finishTurn()) return;
-
-    currentPlayer = "X";
-    statusText.textContent = "Your turn (X)";
+// Find empty cells
+function getAvailableMoves(currentBoard) {
+    return currentBoard
+        .map((value, index) => value === "" ? index : -1)
+        .filter((index) => index !== -1);
 }
 
-// Find the best move using Minimax
-function findBestMove() {
+// Test whether a player can win in one move
+function findWinningMove(player) {
+    for (const index of getAvailableMoves(board)) {
+        board[index] = player;
+
+        const wins = checkWinner(board) !== null;
+
+        board[index] = "";
+
+        if (wins) return index;
+    }
+
+    return -1;
+}
+
+// EASY: Choose a random available cell
+function getEasyMove() {
+    const moves = getAvailableMoves(board);
+
+    return moves[Math.floor(Math.random() * moves.length)];
+}
+
+// DIFFICULT: Win, block, take center/corners, or choose randomly
+function getDifficultMove() {
+    // Win immediately if possible
+    const winningMove = findWinningMove("O");
+
+    if (winningMove !== -1) {
+        return winningMove;
+    }
+
+    // Block the player's immediate win
+    const blockingMove = findWinningMove("X");
+
+    if (blockingMove !== -1) {
+        return blockingMove;
+    }
+
+    // Prefer the center
+    if (board[4] === "") {
+        return 4;
+    }
+
+    // Prefer an available corner
+    const corners = [0, 2, 6, 8].filter(
+        (index) => board[index] === ""
+    );
+
+    if (corners.length > 0) {
+        return corners[Math.floor(Math.random() * corners.length)];
+    }
+
+    // Otherwise choose an available side
+    return getEasyMove();
+}
+
+// HARD: Use Minimax to find an optimal move
+function getHardMove() {
     let bestScore = -Infinity;
-    let bestMove = -1;
+    let bestMoves = [];
 
-    for (let i = 0; i < board.length; i++) {
-        if (board[i] === "") {
-            board[i] = "O";
+    for (const index of getAvailableMoves(board)) {
+        board[index] = "O";
 
-            const score = minimax(board, 0, false);
+        const score = minimax(board, 0, false);
 
-            board[i] = "";
+        board[index] = "";
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = i;
-            }
+        if (score > bestScore) {
+            bestScore = score;
+            bestMoves = [index];
+        } else if (score === bestScore) {
+            bestMoves.push(index);
         }
     }
 
-    return bestMove;
+    // Randomly choose between equally good moves
+    return bestMoves[
+        Math.floor(Math.random() * bestMoves.length)
+    ];
 }
 
-// AI searches possible future moves
+// Minimax algorithm
 function minimax(currentBoard, depth, isMaximizing) {
-    const winner = checkWinner(currentBoard);
+    const winningCombo = checkWinner(currentBoard);
 
-    if (winner) {
-        const [a] = winner;
+    if (winningCombo) {
+        const winner = currentBoard[winningCombo[0]];
 
-        if (currentBoard[a] === "O") return 10 - depth;
-        if (currentBoard[a] === "X") return depth - 10;
+        if (winner === "O") return 10 - depth;
+        if (winner === "X") return depth - 10;
     }
 
     if (currentBoard.every((cell) => cell !== "")) {
@@ -218,42 +290,54 @@ function minimax(currentBoard, depth, isMaximizing) {
     if (isMaximizing) {
         let bestScore = -Infinity;
 
-        for (let i = 0; i < currentBoard.length; i++) {
-            if (currentBoard[i] === "") {
-                currentBoard[i] = "O";
+        for (const index of getAvailableMoves(currentBoard)) {
+            currentBoard[index] = "O";
 
-                const score = minimax(
-                    currentBoard,
-                    depth + 1,
-                    false
-                );
+            const score = minimax(currentBoard, depth + 1, false);
 
-                currentBoard[i] = "";
-                bestScore = Math.max(bestScore, score);
-            }
+            currentBoard[index] = "";
+            bestScore = Math.max(bestScore, score);
         }
 
         return bestScore;
     } else {
         let bestScore = Infinity;
 
-        for (let i = 0; i < currentBoard.length; i++) {
-            if (currentBoard[i] === "") {
-                currentBoard[i] = "X";
+        for (const index of getAvailableMoves(currentBoard)) {
+            currentBoard[index] = "X";
 
-                const score = minimax(
-                    currentBoard,
-                    depth + 1,
-                    true
-                );
+            const score = minimax(currentBoard, depth + 1, true);
 
-                currentBoard[i] = "";
-                bestScore = Math.min(bestScore, score);
-            }
+            currentBoard[index] = "";
+            bestScore = Math.min(bestScore, score);
         }
 
         return bestScore;
     }
+}
+
+// Computer's turn
+function computerMove() {
+    if (!gameActive || gameMode !== "ai") return;
+
+    let index;
+
+    if (difficulty === "easy") {
+        index = getEasyMove();
+    } else if (difficulty === "difficult") {
+        index = getDifficultMove();
+    } else {
+        index = getHardMove();
+    }
+
+    if (index === -1) return;
+
+    makeMove(index, "O");
+
+    if (finishTurn()) return;
+
+    currentPlayer = "X";
+    statusText.textContent = "Your turn (X)";
 }
 
 // Restart the current round
@@ -270,18 +354,18 @@ function restartGame() {
 
     cells.forEach((cell) => {
         cell.textContent = "";
-        cell.disabled = false;
         cell.classList.remove("x", "o", "winner");
     });
 }
 
-// Return to game mode selection
+// Change game mode
 changeModeBtn.addEventListener("click", () => {
     gameActive = false;
 
     gameArea.hidden = true;
+    difficultySelection.hidden = true;
     modeSelection.hidden = false;
 });
 
-// Restart button
+// Restart current round without resetting scores
 restartBtn.addEventListener("click", restartGame);
